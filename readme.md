@@ -10,20 +10,29 @@
 
 ## 🛠️ 기술 스택
 - **백엔드:** FastAPI, SQLAlchemy, PostgreSQL
-- **웹 크롤링:** Selenium / Requests + BeautifulSoup
+- **웹 크롤링:** Selenium, Requests + BeautifulSoup
 - **데이터 분석:** Polars
 - **프론트엔드:** Streamlit
 - **배포:** Docker
 
 ## 🚀 실행 방법
 1. **가상 환경 설정**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # Mac/Linux
-   venv\Scripts\activate  # Windows
+```bash
+python -m venv venv
+source venv/bin/activate  # Mac/Linux
+venv\Scripts\activate  # Windows
 ```
 
 2. **필요한 패키지 설치**
-```
+```bash
 pip install -r requirements.txt
 ```
+
+3. **FastAPI 실행**
+```bash
+uvicorn backend.app.main:app --reload
+```
+
+4. **API 문서 확인 (Swagger UI)**
+
+➡️ 브라우저에서 http://127.0.0.1:8000/docs 접속
