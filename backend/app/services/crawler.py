@@ -26,10 +26,10 @@ def get_search_volume(keyword: str, start_date: str, end_date: str):
     body = {
         "startDate": start_date,
         "endDate": end_date,
-        "timeUnit": "month",
-        "keywordGroups": [{"groupName": keyword, "keywords": [keyword]}],
-        "device": "pc",
-        "ages": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
+        "timeUnit": "date",
+        "keywordGroups": [{"groupName": keyword, "keywords": [keyword]}]
+        # "device": "pc",
+        # "ages": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
     }
 
     response = requests.post(url, headers=headers, data=json.dumps(body))
@@ -60,4 +60,3 @@ def save_search_volume(keyword: str, start_date: str, end_date: str):
         db.commit()
         print(f"✅ {keyword} 검색량 데이터 저장 완료!")
     db.close()
-    
