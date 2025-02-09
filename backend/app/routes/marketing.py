@@ -6,6 +6,7 @@ from backend.app.models.model import MarketingData
 from backend.app.dependencies import get_valid_keyword
 from backend.app.services.crawler import save_search_volume
 from datetime import datetime, timedelta
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/marketing", tags=["Marketing Data"])
 
@@ -36,15 +37,17 @@ def add_marketing_data(
     db.refresh(new_data)
     return {"message": "Marketing data added successfully", "data": new_data}
 
+# JSON Body 스키마 정의 (크롤링 API용)
+class CrawlRequest(BaseModel):
+    keyword: str
+    start_date: str
+    end_date: str
+
 # 특정 키워드의 검색량 데이터 크롤링 API
-@router.post("/crawl")
-def crawl_marketing_data(
-    start_date: str,
-    end_date: str,
-    keyword: str = Depends(get_valid_keyword)
-  ):
-    save_search_volume(keyword, start_date, end_date)
-    return {"message": f"✅ {keyword} 검색량 데이터 크롤링 완료!"}
+@router.post("/search-volume")
+def crawl_marketing_data(request: CrawlRequest):
+    save_search_volume(request.keyword, request.start_date, request.end_date)
+    return {"message": f"✅ {request.keyword} 검색량 데이터 크롤링 완료!"}
 
 # 특정 키워드의 검색량 증가율 분석 API (최근 7일 vs 이전 7일)
 @router.get("/search-trend")

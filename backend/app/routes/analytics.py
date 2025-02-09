@@ -4,7 +4,7 @@ from backend.app.database import SessionLocal
 from backend.app.models.model import MarketingData, SalesData
 from backend.app.dependencies import get_valid_keyword
 
-router = APIRouter(prefix="/marketing-sales", tags=["Data Comparison with Marketing and Sales"])
+router = APIRouter(prefix="/analytics", tags=["Data Analytics"])
 
 def get_db():
   db = SessionLocal()
