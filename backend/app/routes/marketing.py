@@ -23,20 +23,6 @@ def get_db():
 def get_marketing_data(db: Session = Depends(get_db)):
     return db.query(MarketingData).all()
 
-# 새로운 마케팅 데이터 추가 API
-@router.post("/")
-def add_marketing_data( 
-    date: str, 
-    search_volume: int, 
-    db: Session = Depends(get_db),
-    keyword: str = Depends(get_valid_keyword)
-  ):
-    new_data = MarketingData(keyword=keyword, date=date, search_volume=search_volume)
-    db.add(new_data)
-    db.commit()
-    db.refresh(new_data)
-    return {"message": "Marketing data added successfully", "data": new_data}
-
 # JSON Body 스키마 정의 (크롤링 API용)
 class CrawlRequest(BaseModel):
     keyword: str
@@ -50,7 +36,7 @@ def crawl_marketing_data(request: CrawlRequest):
     return {"message": f"✅ {request.keyword} 검색량 데이터 크롤링 완료!"}
 
 # 특정 키워드의 검색량 증가율 분석 API (최근 7일 vs 이전 7일)
-@router.get("/search-trend")
+@router.get("/search-volulme-trend")
 def get_search_trend(
     keyword: str = Depends(get_valid_keyword), 
     db: Session = Depends(get_db)
