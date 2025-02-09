@@ -4,7 +4,7 @@ from backend.app.database import SessionLocal
 from backend.app.models.model import MarketingData, SalesData
 from backend.app.dependencies import get_valid_keyword
 
-router = APIRouter(prefix="/data", tags=["Data Comparison"])
+router = APIRouter(prefix="/marketing-sales", tags=["Data Comparison with Marketing and Sales"])
 
 def get_db():
   db = SessionLocal()
@@ -14,7 +14,7 @@ def get_db():
     db.close()
 
 # 특정 날짜 검색량 및 매출 비교
-@router.get("/compare")
+@router.get("/marketing-sales")
 def compare_marketing_and_sales(
     date: str,
     keyword: str = Depends(get_valid_keyword),

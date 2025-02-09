@@ -29,7 +29,7 @@ def add_sales_data(date: str, revenue: int, db: Session = Depends(get_db)):
     return {"message": "단일 매출 데이터가 성공적으로 저장되었습니다.", "data": new_data}
 
 # 새로운 매출 데이터 추가 (CSV 파일을 업로드 방식)
-@router.post("/upload")
+@router.post("/files")
 async def upload_sales_data(file: UploadFile = File(...), db: Session = Depends(get_db)):
     try:
         # CSV 파일을 Polars DataFrame으로 읽기
