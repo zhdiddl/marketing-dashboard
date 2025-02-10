@@ -27,7 +27,7 @@ def get_sales_data(
     
     data = query.all()
     if not data:
-        return {"message": "설정 조건에 맞는 매출 데이터가 저장되어 있지 않습니다."}
+        return [] # 빈 리스트 반환
     return data
 
 # 새로운 매출 데이터 추가 (단일 데이터)
