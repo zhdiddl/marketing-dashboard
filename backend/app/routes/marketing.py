@@ -18,10 +18,24 @@ def get_db():
     finally:
         db.close()
 
-# 모든 마케팅 데이터 조회 API
-@router.get("/")
-def get_marketing_data(db: Session = Depends(get_db)):
-    return db.query(MarketingData).all()
+# 특정 키워드의 검색량 데이터 조회 API (기간 설정 가능)
+@router.get("/search-volume")
+def get_marketing_data(
+    start_date: str = None,
+    end_date: str = None,
+    keyword: str = Depends(get_valid_keyword),
+    db: Session = Depends(get_db)
+):
+
+    query = db.query(MarketingData).filter(MarketingData.keyword == keyword)
+
+    if start_date and end_date:
+        query = query.filter(MarketingData.date.between(start_date, end_date))
+
+    data = query.all()
+    if not data:
+        return {"message": f"설정 조건에 맞는 {keyword}에 대한 검색량 데이터가 저장되어 있지 않습니다."}
+    return data
 
 # JSON Body 스키마 정의 (크롤링 API용)
 class CrawlRequest(BaseModel):
@@ -40,7 +54,7 @@ def crawl_marketing_data(request: CrawlRequest):
 def get_search_trend(
     keyword: str = Depends(get_valid_keyword), 
     db: Session = Depends(get_db)
-  ):
+):
     today = datetime.today()
     last_week = today - timedelta(days=7)
     two_weeks_ago = today - timedelta(days=14)

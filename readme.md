@@ -11,7 +11,7 @@
 ## 🛠️ 기술 스택
 - **백엔드:** FastAPI, SQLAlchemy, PostgreSQL
 - **웹 크롤링:** Selenium, Requests + BeautifulSoup
-- **데이터 분석:** Polars
+- **데이터 처리:** Pandas (분석 및 시각화), Polars (파일 업로드)
 - **프론트엔드:** Streamlit
 - **배포:** Docker
 

@@ -14,10 +14,21 @@ def get_db():
     finally:
         db.close()
 
-# 모든 매출 데이터 조회
+# 모든 매출 데이터 조회 (기간 설정 가능)
 @router.get("/")
-def get_sales_data(db: Session = Depends(get_db)):
-    return db.query(SalesData).all()
+def get_sales_data(
+    start_date: str = None,
+    end_date: str = None,
+    db: Session = Depends(get_db)
+):
+    query = db.query(SalesData)
+    if start_date and end_date:
+        query = query.filter(SalesData.date.between(start_date, end_date))
+    
+    data = query.all()
+    if not data:
+        return {"message": "설정 조건에 맞는 매출 데이터가 저장되어 있지 않습니다."}
+    return data
 
 # 새로운 매출 데이터 추가 (단일 데이터)
 @router.post("/")
