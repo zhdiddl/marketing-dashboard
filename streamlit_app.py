@@ -74,12 +74,12 @@ selected_start_date = st.sidebar.date_input("📅 조회 시작 날짜 입력")
 selected_end_date = st.sidebar.date_input("📅 조회 마지막 날짜 입력")
 
 if st.sidebar.button("📥 데이터 조회"):
-    # 검색량 데이터 차트 출력
+    # 1. 검색량 데이터 차트 출력
     st.subheader(f"📈 {selected_keyword} 검색량 트렌드")
     marketing_df = fetch_marketing_data(selected_keyword, selected_start_date, selected_end_date)
     if not marketing_df.empty:
-        # 날짜를 datetime 형식으로 변환
-        marketing_df["date"] = pd.to_datetime(marketing_df["date"])
+        marketing_df["date"] = pd.to_datetime(marketing_df["date"]) # 날짜 변환
+        marketing_df = marketing_df.sort_values("date") # 날짜 순 정렬
         # 검색량을 정수로 변환
         marketing_df["search_volume"] = marketing_df["search_volume"].astype(int)
 
@@ -102,18 +102,20 @@ if st.sidebar.button("📥 데이터 조회"):
             ),
             yaxis=dict(
                 tickformat="d", # 정수 포맷
-                dtick=1, # 1씩 값 증가
-                range=[marketing_df["search_volume"].min() - 1, marketing_df["search_volume"].max() + 1]  # y축 범위 자동 조정
+                range=[max(0, marketing_df["search_volume"].min() - 1)  , marketing_df["search_volume"].max() + 1]  # y축 범위 자동 조정
             )
         )
         
         st.plotly_chart(fig)  # 그래프로 출력
 
 
-    # 매출 데이터 차트 출력
+    # 2. 매출 데이터 차트 출력
     st.subheader("💰 매출 데이터 트렌드")
     sales_df = fetch_sales_data(selected_start_date, selected_end_date)
     if not sales_df.empty:
+        sales_df["date"] = pd.to_datetime(sales_df["date"]) # 날짜 변환
+        sales_df = sales_df.sort_values("date") # 날짜 순 정렬
+
         fig = px.bar(
             sales_df, 
             x="date", 
@@ -134,7 +136,7 @@ if st.sidebar.button("📥 데이터 조회"):
         st.plotly_chart(fig)  # 그래프로 출력
 
 
-    # 검색량 & 매출 비교 데이터 출력
+    # 3. 검색량 & 매출 비교 데이터 출력
     st.subheader("📊 검색량 & 매출 비교")
     comparison_df = fetch_comparison_data(selected_keyword, selected_start_date, selected_end_date)
 
@@ -187,8 +189,7 @@ if st.sidebar.button("📥 데이터 조회"):
                 overlaying="y", 
                 showgrid=False,
                 tickformat="d", # 정수 포맷
-                dtick=1, # 1씩 값 증가
-                range=[marketing_df["search_volume"].min() - 1, marketing_df["search_volume"].max() + 1]  # y축 범위 자동 조정
+                range=[max(0, marketing_df["search_volume"].min() - 1), marketing_df["search_volume"].max() + 1]  # y축 범위 자동 조정
             ),
         )
 
