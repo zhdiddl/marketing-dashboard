@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from datetime import datetime, timedelta
+import pandas as pd
 from backend.app.database import SessionLocal
 from backend.app.models.model import MarketingData, SalesData
 from backend.app.dependencies import get_valid_keyword
 
 router = APIRouter(prefix="/analytics", tags=["Data Analytics"])
-
 
 def get_db():
     db = SessionLocal()
@@ -13,7 +14,6 @@ def get_db():
         yield db
     finally:
         db.close()
-
 
 # 특정 기간의 검색량 및 매출 비교
 @router.get("/marketing-sales")
@@ -23,7 +23,6 @@ def compare_marketing_and_sales(
     keyword: str = Depends(get_valid_keyword),
     db: Session = Depends(get_db),
 ):
-
     # 특정 기간의 키워드 검색량 조회
     marketing_records = (
         db.query(MarketingData)
@@ -42,9 +41,9 @@ def compare_marketing_and_sales(
     # 부족한 데이터가 있는 경우 응답에 메시지로 반환
     missing_data = []
     if not marketing_records:
-        missing_data.append("검색량 데이터가 부족합니다.")
+        missing_data.append(f"'{start_date}부터 {end_date}까지의 {keyword}'의 검색량 데이터 없음")
     if not sales_records:
-        missing_data.append("매출 데이터가 부족합니다.")
+        missing_data.append(f"'{start_date}부터 {end_date}까지의 매출 데이터 없음")
 
     if missing_data:
         return {

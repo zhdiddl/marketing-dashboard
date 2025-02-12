@@ -74,14 +74,22 @@ selected_start_date = st.sidebar.date_input("📅 조회 시작 날짜 입력")
 selected_end_date = st.sidebar.date_input("📅 조회 마지막 날짜 입력")
 
 if st.sidebar.button("📥 데이터 조회"):
+
+    # 조회 요청 기간 전체를 포함하는 데이터프레임 생성
+    full_date_range = pd.date_range(start=selected_start_date, end=selected_end_date)
+    full_date_df = pd.DataFrame({"date": full_date_range})
+
     # 1. 검색량 데이터 차트 출력
     st.subheader(f"📈 {selected_keyword} 검색량 트렌드")
     marketing_df = fetch_marketing_data(selected_keyword, selected_start_date, selected_end_date)
+
     if not marketing_df.empty:
-        marketing_df["date"] = pd.to_datetime(marketing_df["date"]) # 날짜 변환
+        marketing_df["date"] = pd.to_datetime(marketing_df["date"]) # str -> datetime64 변환
         marketing_df = marketing_df.sort_values("date") # 날짜 순 정렬
         # 검색량을 정수로 변환
         marketing_df["search_volume"] = marketing_df["search_volume"].astype(int)
+        # 조회 요청 기간 데이터를 유지하도록 병합
+        marketing_df = pd.merge(full_date_df, marketing_df, on="date", how="left")
 
         # 그래프 생성
         fig = px.line(
@@ -92,6 +100,9 @@ if st.sidebar.button("📥 데이터 조회"):
             title="검색량 변화 추이",
             labels={"date": "날짜", "search_volume": "검색량", "keyword": "검색어"}
         )
+
+         # X축 범위 강제 설정 (조회 요청 기간 유지)
+        fig.update_xaxes(range=[selected_start_date, selected_end_date])
 
         # 차트 레이아웃 설정
         fig.update_layout(
@@ -113,8 +124,10 @@ if st.sidebar.button("📥 데이터 조회"):
     st.subheader("💰 매출 데이터 트렌드")
     sales_df = fetch_sales_data(selected_start_date, selected_end_date)
     if not sales_df.empty:
-        sales_df["date"] = pd.to_datetime(sales_df["date"]) # 날짜 변환
+        sales_df["date"] = pd.to_datetime(sales_df["date"]) # str -> datetime64 변환
         sales_df = sales_df.sort_values("date") # 날짜 순 정렬
+        # 조회 요청 기간 데이터를 유지하도록 병합
+        sales_df = pd.merge(full_date_df, sales_df, on="date", how="left")
 
         fig = px.bar(
             sales_df, 
@@ -136,61 +149,90 @@ if st.sidebar.button("📥 데이터 조회"):
         st.plotly_chart(fig)  # 그래프로 출력
 
 
-    # 3. 검색량 & 매출 비교 데이터 출력
-    st.subheader("📊 검색량 & 매출 비교")
-    comparison_df = fetch_comparison_data(selected_keyword, selected_start_date, selected_end_date)
+        # 3. 검색량 & 매출 비교 데이터 출력
+        st.subheader("📊 검색량 & 매출 비교")
+        comparison_df = fetch_comparison_data(selected_keyword, selected_start_date, selected_end_date)
 
-    if comparison_df.empty: # 데이터프레임이 비어있는지 확인
-        st.warning("🔎 데이터가 부족해서 시각화할 수 없습니다.")
-    else:
-        comparison_df["date"] = pd.to_datetime(comparison_df["date"]) # 날짜 변환
-        comparison_df = comparison_df.sort_values("date") # 날짜 순 정렬
+        if comparison_df.empty: # 데이터프레임이 비어있는지 확인
+            st.warning("🔎 데이터가 부족해서 시각화할 수 없습니다.")
+        else:
+            comparison_df["date"] = pd.to_datetime(comparison_df["date"]) # str -> datetime64 변환
+            comparison_df = comparison_df.sort_values("date") # 날짜 순 정렬
 
-        fig = go.Figure()  # 그래프 생성에 사용할 Figure 객체 생성
+            # 비교 데이터 병합 (조회 요청 기간 유지)
+            merged_df = pd.merge(
+                full_date_df, # 조회 요청 기간
+                comparison_df,
+                on="date",
+                how="outer"
+            ).sort_values("date")
 
-        # 매출 (Bar Chart)
-        fig.add_trace(
-            go.Bar(
-                x=comparison_df["date"],
-                y=comparison_df["revenue"],
-                name="매출",
-                yaxis="y",
-                marker=dict(color="blue")  # 마커 색 지정
+            # 검색량과 매출 데이터 최종 병합 (조회 요청 기간 유지)
+            merged_df = pd.merge(
+                pd.merge(full_date_df, marketing_df, on="date", how="outer"), # 검색량 개별 병합
+                sales_df, # 매출 개별 병합
+                on="date",
+                how="outer"
+            ).sort_values("date")
+
+            # 데이터가 없는 경우 NaN -> pd.NA 처리
+            merged_df["revenue"] = merged_df["revenue"].fillna(pd.NA)
+            merged_df["search_volume"] = merged_df["search_volume"].fillna(pd.NA)
+
+            # 검색량 및 매출 데이터가 누락된 날짜 필터링 (datetime64 -> str list 변환)
+            missing_sales_dates = merged_df[merged_df["revenue"].isnull()]["date"].dt.strftime("%Y-%m-%d").tolist()
+            missing_marketing_dates = merged_df[merged_df["search_volume"].isnull()]["date"].dt.strftime("%Y-%m-%d").tolist()
+
+            if missing_sales_dates:
+                st.warning(f"⚠️ 매출 데이터 누락 날짜: {', '.join(missing_sales_dates)}")
+            if missing_marketing_dates:
+                st.warning(f"⚠️ 검색량 데이터 누락 날짜: {', '.join(missing_marketing_dates)}")
+
+            fig = go.Figure()  # 그래프 생성에 사용할 Figure 객체 생성
+
+            # 매출 (Bar Chart)
+            fig.add_trace(
+                go.Bar(
+                    x=merged_df["date"],
+                    y=merged_df["revenue"],
+                    name="매출",
+                    yaxis="y",
+                    marker=dict(color="blue")  # 마커 색 지정
+                )
             )
-        )
 
-        # 검색량 (Line Chart)
-        fig.add_trace(
-            go.Scatter(
-                x=comparison_df["date"],
-                y=comparison_df["search_volume"],
-                name="검색량",
-                yaxis="y2",
-                mode="lines+markers",
-                marker=dict(color="red")
+            # 검색량 (Line Chart)
+            fig.add_trace(
+                go.Scatter(
+                    x=merged_df["date"],
+                    y=merged_df["search_volume"],
+                    name="검색량",
+                    yaxis="y2",
+                    mode="lines+markers",
+                    marker=dict(color="red")
+                )
             )
-        )
 
-        # y축 설정 (이중 축)
-        fig.update_layout(
-            title=f"{selected_keyword} 검색량 & 매출 비교",
-            xaxis=dict(
-                title="날짜",
-                tickformat="%Y-%m-%d", # 날짜 포맷
-                dtick="D1",  # 1일 단위로 눈금 표시 (중복 날짜 표기 방지)
-                tickangle=-45  # 45도 회전 표시
-            ),
-            yaxis=dict(
-                title="매출 (천 단위)", side="left", showgrid=False  # 격자 미표시
-            ),
-            yaxis2=dict(
-                title="검색량", 
-                side="right",
-                overlaying="y", 
-                showgrid=False,
-                tickformat="d", # 정수 포맷
-                range=[max(0, marketing_df["search_volume"].min() - 1), marketing_df["search_volume"].max() + 1]  # y축 범위 자동 조정
-            ),
-        )
+            # y축 설정 (이중 축)
+            fig.update_layout(
+                title=f"{selected_keyword} 검색량 & 매출 비교",
+                xaxis=dict(
+                    title="날짜",
+                    tickformat="%Y-%m-%d", # 날짜 포맷
+                    dtick="D1",  # 1일 단위로 눈금 표시 (중복 날짜 표기 방지)
+                    tickangle=-45  # 45도 회전 표시
+                ),
+                yaxis=dict(
+                    title="매출 (천 단위)", side="left", showgrid=False  # 격자 미표시
+                ),
+                yaxis2=dict(
+                    title="검색량", 
+                    side="right",
+                    overlaying="y", 
+                    showgrid=False,
+                    tickformat="d", # 정수 포맷
+                    range=[max(0, marketing_df["search_volume"].min() - 1), marketing_df["search_volume"].max() + 1]  # y축 범위 자동 조정
+                ),
+            )
 
-        st.plotly_chart(fig)  # 그래프로 출력
+            st.plotly_chart(fig)  # 그래프로 출력
