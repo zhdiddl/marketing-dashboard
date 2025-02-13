@@ -101,7 +101,7 @@ if st.sidebar.button("📥 데이터 조회"):
             labels={"date": "날짜", "search_volume": "검색량", "keyword": "검색어"}
         )
 
-         # X축 범위 강제 설정 (조회 요청 기간 유지)
+        # X축 범위 강제 설정 (조회 요청 기간 유지)
         fig.update_xaxes(range=[selected_start_date, selected_end_date])
 
         # 차트 레이아웃 설정
@@ -149,8 +149,8 @@ if st.sidebar.button("📥 데이터 조회"):
         st.plotly_chart(fig)  # 그래프로 출력
 
 
-        # 3. 검색량 & 매출 비교 데이터 출력
-        st.subheader("📊 검색량 & 매출 비교")
+        # 3. 검색량 및 매출 변화율 비교 데이터 출력
+        st.subheader("📊 검색량 & 매출 변화율 비교")
         comparison_df = fetch_comparison_data(selected_keyword, selected_start_date, selected_end_date)
 
         if comparison_df.empty: # 데이터프레임이 비어있는지 확인
@@ -159,18 +159,18 @@ if st.sidebar.button("📥 데이터 조회"):
             comparison_df["date"] = pd.to_datetime(comparison_df["date"]) # str -> datetime64 변환
             comparison_df = comparison_df.sort_values("date") # 날짜 순 정렬
 
-            # 비교 데이터 병합 (조회 요청 기간 유지)
+            # 조회 요청 기간과 비교 데이터 기간 병합
             merged_df = pd.merge(
-                full_date_df, # 조회 요청 기간
+                full_date_df,
                 comparison_df,
                 on="date",
                 how="outer"
             ).sort_values("date")
 
-            # 검색량과 매출 데이터 최종 병합 (조회 요청 기간 유지)
+            # 검색량과 매출 데이터가 하나라도 존재하는 모든 날짜를 포함하게 수정
             merged_df = pd.merge(
-                pd.merge(full_date_df, marketing_df, on="date", how="outer"), # 검색량 개별 병합
-                sales_df, # 매출 개별 병합
+                pd.merge(merged_df, marketing_df, on="date", how="outer"),
+                sales_df,
                 on="date",
                 how="outer"
             ).sort_values("date")
@@ -183,6 +183,7 @@ if st.sidebar.button("📥 데이터 조회"):
             missing_sales_dates = merged_df[merged_df["revenue"].isnull()]["date"].dt.strftime("%Y-%m-%d").tolist()
             missing_marketing_dates = merged_df[merged_df["search_volume"].isnull()]["date"].dt.strftime("%Y-%m-%d").tolist()
 
+            # 누락된 날짜 메시지 표시
             if missing_sales_dates:
                 st.warning(f"⚠️ 매출 데이터 누락 날짜: {', '.join(missing_sales_dates)}")
             if missing_marketing_dates:
@@ -190,32 +191,29 @@ if st.sidebar.button("📥 데이터 조회"):
 
             fig = go.Figure()  # 그래프 생성에 사용할 Figure 객체 생성
 
-            # 매출 (Bar Chart)
+            # 매출 변동률 (Bar Chart)
             fig.add_trace(
                 go.Bar(
                     x=merged_df["date"],
-                    y=merged_df["revenue"],
-                    name="매출",
-                    yaxis="y",
+                    y=merged_df["revenue_change_rate"],
+                    name="매출 변동률 (%)",
                     marker=dict(color="blue")  # 마커 색 지정
                 )
             )
 
-            # 검색량 (Line Chart)
+            # 검색량 변화율 (Line Chart)
             fig.add_trace(
                 go.Scatter(
                     x=merged_df["date"],
-                    y=merged_df["search_volume"],
-                    name="검색량",
-                    yaxis="y2",
+                    y=merged_df["search_volume_change_rate"],
+                    name="검색량 변화율 (%)",
                     mode="lines+markers",
                     marker=dict(color="red")
                 )
             )
 
-            # y축 설정 (이중 축)
             fig.update_layout(
-                title=f"{selected_keyword} 검색량 & 매출 비교",
+                title=f"{selected_keyword} 검색량 & 매출 변화율 비교",
                 xaxis=dict(
                     title="날짜",
                     tickformat="%Y-%m-%d", # 날짜 포맷
@@ -223,16 +221,10 @@ if st.sidebar.button("📥 데이터 조회"):
                     tickangle=-45  # 45도 회전 표시
                 ),
                 yaxis=dict(
-                    title="매출 (천 단위)", side="left", showgrid=False  # 격자 미표시
-                ),
-                yaxis2=dict(
-                    title="검색량", 
-                    side="right",
-                    overlaying="y", 
-                    showgrid=False,
-                    tickformat="d", # 정수 포맷
-                    range=[max(0, marketing_df["search_volume"].min() - 1), marketing_df["search_volume"].max() + 1]  # y축 범위 자동 조정
-                ),
+                    title="변화율 (%)",
+                    side="left",
+                    showgrid=False
+                )
             )
 
             st.plotly_chart(fig)  # 그래프로 출력
