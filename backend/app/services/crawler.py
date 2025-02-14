@@ -1,6 +1,6 @@
 import requests
 import json
-import datetime
+from sqlalchemy.orm import Session
 from backend.app.database import SessionLocal
 from backend.app.models.model import MarketingData
 from dotenv import load_dotenv
@@ -22,14 +22,12 @@ def get_search_volume(keyword: str, start_date: str, end_date: str):
         "X-Naver-Client-Secret": CLIENT_SECRET,
         "Content-Type": "application/json"
     }
-   
+
     body = {
         "startDate": start_date,
         "endDate": end_date,
         "timeUnit": "date",
         "keywordGroups": [{"groupName": keyword, "keywords": [keyword]}]
-        # "device": "pc",
-        # "ages": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
     }
 
     response = requests.post(url, headers=headers, data=json.dumps(body))
@@ -42,7 +40,7 @@ def get_search_volume(keyword: str, start_date: str, end_date: str):
 
 # 데이터베이스 저장 함수
 def save_search_volume(keyword: str, start_date: str, end_date: str):
-    db = SessionLocal()
+    db: Session = SessionLocal()
     data = get_search_volume(keyword, start_date, end_date)
 
     if data:
