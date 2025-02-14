@@ -108,7 +108,7 @@ if st.sidebar.button("📥 데이터 조회"):
         fig.update_layout(
             xaxis=dict(
                 tickformat="%Y-%m-%d", # 날짜 포맷
-                dtick="D1",  # 1일 단위로 눈금 표시 (중복 날짜 표기 방지)
+                # dtick="D1",  # 1일 단위로 눈금 표시 (중복 날짜 표기 방지)
                 tickangle=-45  # 45도 회전 표시
             ),
             yaxis=dict(
@@ -141,7 +141,7 @@ if st.sidebar.button("📥 데이터 조회"):
         fig.update_layout(
             xaxis=dict(
                 tickformat="%Y-%m-%d", # 날짜 포맷
-                dtick="D1",  # 1일 단위로 눈금 표시 (중복 날짜 표기 방지)
+                # dtick="D1",  # 1일 단위로 눈금 표시 (중복 날짜 표기 방지)
                 tickangle=-45  # 45도 회전 표시
             )
         )
@@ -217,7 +217,7 @@ if st.sidebar.button("📥 데이터 조회"):
                 xaxis=dict(
                     title="날짜",
                     tickformat="%Y-%m-%d", # 날짜 포맷
-                    dtick="D1",  # 1일 단위로 눈금 표시 (중복 날짜 표기 방지)
+                    # dtick="D1",  # 1일 단위로 눈금 표시 (중복 날짜 표기 방지)
                     tickangle=-45  # 45도 회전 표시
                 ),
                 yaxis=dict(
