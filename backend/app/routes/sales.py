@@ -3,6 +3,7 @@ import polars as pl
 from sqlalchemy.orm import Session
 from backend.app.database import SessionLocal
 from backend.app.models.model import SalesData
+from backend.app.utils.validators import validate_date, validate_positive_number, validate_csv_data, validate_no_duplicate_date_in_db
 
 router = APIRouter(prefix="/sales", tags=["Sales Data"])
 
@@ -17,8 +18,8 @@ def get_db():
 # 모든 매출 데이터 조회 (기간 설정 가능)
 @router.get("/")
 def get_sales_data(
-    start_date: str = None,
-    end_date: str = None,
+    start_date: str = Depends(validate_date),
+    end_date: str = Depends(validate_date),
     db: Session = Depends(get_db)
 ):
     query = db.query(SalesData)
@@ -32,7 +33,13 @@ def get_sales_data(
 
 # 새로운 매출 데이터 추가 (단일 데이터)
 @router.post("/")
-def add_sales_data(date: str, revenue: int, db: Session = Depends(get_db)):
+def add_sales_data(
+    date: str = Depends(validate_date), 
+    revenue: int = Depends(validate_positive_number), 
+    db: Session = Depends(get_db)
+):
+    validate_no_duplicate_date_in_db(db, date)
+
     new_data = SalesData(date=date, revenue=revenue)
     db.add(new_data)
     db.commit()
@@ -41,25 +48,44 @@ def add_sales_data(date: str, revenue: int, db: Session = Depends(get_db)):
 
 # 새로운 매출 데이터 추가 (CSV 파일을 업로드 방식)
 @router.post("/files")
-async def upload_sales_data(file: UploadFile = File(...), db: Session = Depends(get_db)):
+def upload_sales_data(
+    file: UploadFile = File(...), 
+    db: Session = Depends(get_db)
+):
     try:
-        # CSV 파일을 Polars DataFrame으로 읽기
+        # CSV 파일을 Polars DataFrame으로 읽고 검증 함수 호출
         df = pl.read_csv(file.file)
+        validate_csv_data(df)
 
-        # CSV에서 필요한 컬럼이 없는 경우
-        if "date" not in df.columns or "revenue" not in df.columns:
-            return {"error": "업로드한 파일에서 'date' 또는 'revenue' 컬럼을 찾을 수 없습니다."}
+        # DB에서 날짜 데이터를 객체 리스트로 반환해 set으로 저장
+        existing_dates = {row.date.strftime("%Y-%m-%d") for row in db.query(SalesData.date).all()}
 
-        # DataFrame을 리스트로 변환 후 DB에 저장
-        sales_records = [
-            SalesData(date=row["date"], revenue=row["revenue"])
-            for row in df.iter_rows(named=True)
-        ]
+        new_records = []
+        skipped_dates = []
 
-        db.add_all(sales_records)
+        # 날짜가 중복이면 데이터를 저장하지 않음
+        for row in df.iter_rows(named=True):
+            if row["date"] in existing_dates:
+                skipped_dates.append(row["date"]) # 알림을 위한 중복 날짜 기록
+                continue
+            new_records.append(SalesData(date=row["date"], revenue=row["revenue"]))
+
+        # 모든 날짜가 중복이면 메시지 반환
+        if not new_records:
+            return {
+                "message": "❌ 모든 날짜의 데이터가 이미 존재합니다. 새로 업데이트한 데이터가 없습니다.",
+                "skipped_dates": skipped_dates
+            }
+
+        # 객체 리스트를 DB에 저장
+        db.add_all(new_records)
         db.commit()
 
-        return {"message": f"✅ {len(sales_records)}개의 매출 데이터가 성공적으로 저장되었습니다."}
+        # 저장 내역에 대한 메시지 반환
+        return {
+            "message": f"✅ {len(new_records)}개의 매출 데이터가 성공적으로 저장되었습니다.",
+            "skipped_dates": f"{skipped_dates}"
+        }
     except Exception as e:
         return {"error": str(e)}
     
